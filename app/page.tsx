@@ -2,10 +2,30 @@ import Hero3D from "@/components/landing/Hero3D";
 import FlavourReveal from "@/components/landing/FlavourReveal";
 
 const customers = [
-  ["Hotels & Restaurants", "Case-based supply for regular service and guest experiences."],
-  ["Retail & Shops", "Recognisable flavours for everyday customer demand."],
-  ["Offices & Events", "Flexible quantities for teams, meetings, and gatherings."],
-  ["Cinemas & Venues", "Bulk beverage supply for high-footfall operations."]
+  {
+    title: "Hotels & Restaurants",
+    text: "Case-based supply for regular service and guest experiences.",
+    image: "/assets/biz_hotel.png",
+    tag: "Hospitality",
+  },
+  {
+    title: "Retail & Shops",
+    text: "Recognisable flavours for everyday customer demand.",
+    image: "/assets/biz_retail.png",
+    tag: "Retail",
+  },
+  {
+    title: "Offices & Events",
+    text: "Flexible quantities for teams, meetings, and gatherings.",
+    image: "/assets/biz_office.png",
+    tag: "Corporate",
+  },
+  {
+    title: "Cinemas & Venues",
+    text: "Bulk beverage supply for high-footfall operations.",
+    image: "/assets/biz_cinema.png",
+    tag: "Venues",
+  },
 ];
 
 export default function Home() {
@@ -21,10 +41,16 @@ export default function Home() {
           <p>SodaSplash serves businesses that need clear case pricing, multiple flavour options, and a straightforward ordering process.</p>
         </div>
         <div className="serve-grid">
-          {customers.map(([title, text]) => (
+          {customers.map(({ title, text, image, tag }) => (
             <article className="serve-card" key={title}>
-              <h3>{title}</h3>
-              <p>{text}</p>
+              <div className="serve-card-image">
+                <img src={image} alt={title} />
+                <span className="serve-card-tag">{tag}</span>
+              </div>
+              <div className="serve-card-body">
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
             </article>
           ))}
         </div>

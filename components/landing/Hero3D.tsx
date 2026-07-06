@@ -8,9 +8,9 @@ const BottleCanvas = dynamic(() => import("./BottleCanvas"), {
 
 export default function Hero3D() {
   return (
-    <section className="hero" id="top">
+    <section className="hero" id="top" suppressHydrationWarning>
       {/* Nav sits on top */}
-      <nav>
+      <nav suppressHydrationWarning>
         <a className="nav-logo" href="#top">
           <img src="/assets/logo.png" alt="SodaSplash" />
         </a>

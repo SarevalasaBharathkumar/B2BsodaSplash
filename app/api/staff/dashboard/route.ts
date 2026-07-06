@@ -34,6 +34,14 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false })
     .limit(50);
 
+  const adminDataPromise = profile.role === "admin"
+    ? Promise.all([
+        supabase.from("profiles").select("id,email,full_name,role,is_active,created_at").order("created_at", { ascending: false }),
+        supabase.from("products").select("id,name,description,image_url,display_order,is_active,created_at").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
+        supabase.from("flavours").select("id,product_id,name,note,price_per_case,color,display_order,is_active").order("display_order", { ascending: true })
+      ])
+    : Promise.resolve(null);
+
   if (profile.role === "bd") {
     query = query.or(`bd_id.eq.${profile.id},assigned_to.eq.${profile.id}`);
   }
@@ -76,11 +84,11 @@ export async function GET(request: Request) {
   };
 
   if (profile.role === "admin") {
-    const [teamResult, productsResult, flavoursResult] = await Promise.all([
-      supabase.from("profiles").select("id,email,full_name,role,is_active,created_at").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,name,description,image_url,display_order,is_active,created_at").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
-      supabase.from("flavours").select("id,product_id,name,note,price_per_case,color,display_order,is_active").order("display_order", { ascending: true })
-    ]);
+    const [teamResult, productsResult, flavoursResult] = (await adminDataPromise) as [
+      { data: Array<{ id: string; email: string; full_name: string | null; role: string; is_active: boolean; created_at: string }>; error: any },
+      { data: Array<{ id: string; name: string; description: string | null; image_url: string | null; display_order: number; is_active: boolean; created_at: string }>; error: any },
+      { data: Array<{ id: string; product_id: string | null; name: string; note: string | null; price_per_case: number; color: string; display_order: number; is_active: boolean }>; error: any }
+    ];
 
     let productsData = productsResult.data ?? [];
     if (shouldRetryWithoutProductCatalogColumns(productsResult.error)) {

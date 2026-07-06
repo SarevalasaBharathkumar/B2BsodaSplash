@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { defaultProducts, formatINR, type PublicProduct } from "@/lib/flavours";
 import { hasSupabaseEnv, createSupabaseBrowserClient } from "@/lib/supabase";
+import Image from "next/image";
 
 type Details = {
   customerName: string;
@@ -37,15 +38,21 @@ const emptyDetails: Details = {
   note: ""
 };
 
-export default function QuoteRequestForm() {
+export default function QuoteRequestForm({
+  initialProducts,
+  initialTeam
+}: {
+  initialProducts?: PublicProduct[];
+  initialTeam?: PublicTeamMember[];
+}) {
   const [step, setStep] = useState(() => {
     if (typeof window === "undefined") return 1;
     const savedStep = Number(window.sessionStorage.getItem("quoteStep") || 1);
     return [1, 2, 3].includes(savedStep) ? savedStep : 1;
   });
-  const [products, setProducts] = useState<PublicProduct[]>(defaultProducts);
-  const [activeProductId, setActiveProductId] = useState(defaultProducts[0]?.id ?? "");
-  const [team, setTeam] = useState<PublicTeamMember[]>([]);
+  const [products, setProducts] = useState<PublicProduct[]>(initialProducts ?? defaultProducts);
+  const [activeProductId, setActiveProductId] = useState((initialProducts ?? defaultProducts)[0]?.id ?? "");
+  const [team, setTeam] = useState<PublicTeamMember[]>(initialTeam ?? []);
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [details, setDetails] = useState<Details>(emptyDetails);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -71,20 +78,29 @@ export default function QuoteRequestForm() {
   }, [quantities]);
 
   useEffect(() => {
-    fetch("/api/products")
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.products?.length) return;
-        setProducts(data.products);
-        setActiveProductId((current) => current || window.sessionStorage.getItem("quoteProductId") || data.products[0].id);
-      })
-      .catch(() => undefined);
+    if (initialProducts?.length) {
+      setProducts(initialProducts);
+      setActiveProductId((current) => current || window.sessionStorage.getItem("quoteProductId") || initialProducts[0].id);
+    } else {
+      fetch("/api/products")
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.products?.length) return;
+          setProducts(data.products);
+          setActiveProductId((current) => current || window.sessionStorage.getItem("quoteProductId") || data.products[0].id);
+        })
+        .catch(() => undefined);
+    }
 
-    fetch("/api/team")
-      .then((response) => response.json())
-      .then((data) => setTeam(data.team ?? []))
-      .catch(() => undefined);
-  }, []);
+    if (initialTeam?.length) {
+      setTeam(initialTeam);
+    } else {
+      fetch("/api/team")
+        .then((response) => response.json())
+        .then((data) => setTeam(data.team ?? []))
+        .catch(() => undefined);
+    }
+  }, [initialProducts, initialTeam]);
 
   useEffect(() => {
     try {
@@ -217,10 +233,10 @@ export default function QuoteRequestForm() {
     return (
       <div className="quote-success">
         <span>REQUEST RECEIVED</span>
-        <h2>Thank you.</h2>
+        <h1>Thank you.</h1>
         <p>Your quote number is <strong>{result.quoteNumber}</strong>.</p>
         <p>Our team will call you within 24 hours to confirm pricing and availability.</p>
-        <a className="button primary" href={result.trackUrl}>Track this request</a>
+        <a className="button primary" href="/">Back to homepage</a>
       </div>
     );
   }
@@ -230,7 +246,7 @@ export default function QuoteRequestForm() {
       <div className="quote-header">
         <div>
           <span>WHOLESALE REQUEST</span>
-          <h2>Request a quote.</h2>
+          <h1>Request a quote.</h1>
           <p>No online payment. We confirm every order by phone.</p>
         </div>
         <div className="step-indicator">
@@ -282,7 +298,16 @@ export default function QuoteRequestForm() {
                     role="tab"
                     aria-selected={activeProduct?.id === product.id}
                   >
-                    {product.image_url && <img className="product-card-image" src={product.image_url} alt="" />}
+                    {product.image_url && (
+                      <Image
+                        className="product-card-image"
+                        src={product.image_url}
+                        alt={product.name}
+                        width={180}
+                        height={100}
+                        style={{ objectFit: "cover" }}
+                      />
+                    )}
                     <span>{product.name}</span>
                     <strong>{product.flavours.length} flavours</strong>
                     <small>{product.description || "Select to view flavours"}</small>

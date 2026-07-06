@@ -41,10 +41,10 @@ function getPileOffset(index: number, isMobile: boolean) {
   }
 }
 
-export default function FlavourReveal() {
-  const [products, setProducts]         = useState<PublicProduct[]>(defaultProducts);
-  const [activeProductId, setActiveProductId] = useState(defaultProducts[0]?.id ?? "");
-  const [loading, setLoading]           = useState(true);
+export default function FlavourReveal({ initialProducts }: { initialProducts?: PublicProduct[] }) {
+  const [products, setProducts] = useState<PublicProduct[]>(initialProducts ?? defaultProducts);
+  const [activeProductId, setActiveProductId] = useState((initialProducts ?? defaultProducts)[0]?.id ?? "");
+  const [loading, setLoading] = useState(!initialProducts?.length);
   const [isMobile, setIsMobile]         = useState(false);
   // mounted guard: ensures cards always start from pile position on cold server load
   const [mounted, setMounted]           = useState(false);
@@ -70,13 +70,23 @@ export default function FlavourReveal() {
   }, []);
 
   useEffect(() => {
+    if (initialProducts?.length) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     fetch("/api/products")
       .then((r) => r.json())
-      .then((d) => { if (d.products?.length) { setProducts(d.products); setActiveProductId(d.products[0].id); } })
+      .then((d) => {
+        if (d.products?.length) {
+          setProducts(d.products);
+          setActiveProductId(d.products[0].id);
+        }
+      })
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialProducts]);
 
   return (
     <section className="flavours section" id="flavours" ref={sectionRef}>

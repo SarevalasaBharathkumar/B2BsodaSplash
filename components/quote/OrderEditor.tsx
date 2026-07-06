@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { createSupabaseBrowserClient } from "@/lib/supabase";
 import { formatINR } from "@/lib/flavours";
 import { getNextStage, orderStages, stageLabels, type OrderStage } from "@/lib/config";
@@ -54,11 +55,60 @@ type LoadedOrder = {
 type EditableItem = OrderItem;
 
 export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
-  const [data, setData] = useState<LoadedOrder | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [items, setItems] = useState<EditableItem[]>([]);
   const [message, setMessage] = useState("Loading order...");
   const [saving, setSaving] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    async function bootstrap() {
+      const supabase = createSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        window.location.href = "/login";
+        return;
+      }
+
+      setToken(accessToken);
+    }
+
+    bootstrap();
+  }, [quoteNumber]);
+
+  const orderKey = token ? (["order-editor", quoteNumber, token] as const) : null;
+  const { data, error, mutate } = useSWR(
+    orderKey,
+    async ([, currentQuoteNumber, accessToken]) => {
+      const response = await fetch(`/api/orders/${encodeURIComponent(currentQuoteNumber)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const result = await readJsonResponse(response);
+      if (!response.ok) throw new Error(result.error || "Unable to load order.");
+      return result as LoadedOrder;
+    },
+    {
+      dedupingInterval: 30000,
+      revalidateOnFocus: true,
+      shouldRetryOnError: false
+    }
+  );
+
+  useEffect(() => {
+    if (error) {
+      setMessage(error.message);
+    } else if (data) {
+      setMessage("");
+    }
+  }, [data, error]);
+
+  useEffect(() => {
+    if (data) {
+      setItems(data.quote.quote_items);
+    }
+  }, [data]);
 
   async function readJsonResponse(response: Response) {
     const text = await response.text();
@@ -71,36 +121,11 @@ export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
     }
   }
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const supabase = createSupabaseBrowserClient();
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
-
-        if (!token) {
-          window.location.href = "/login";
-          return;
-        }
-
-        const response = await fetch(`/api/orders/${encodeURIComponent(quoteNumber)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const result = await readJsonResponse(response);
-        if (!response.ok) throw new Error(result.error || "Unable to load order.");
-        setData(result);
-        setItems(result.quote.quote_items);
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Unable to load order.");
-      }
-    }
-
-    load();
-  }, [quoteNumber]);
-
   function updateField<K extends keyof OrderQuote>(key: K, value: OrderQuote[K]) {
-    if (!data) return;
-    setData({ ...data, quote: { ...data.quote, [key]: value } });
+    void mutate((current) => {
+      if (!current) return current;
+      return { ...current, quote: { ...current.quote, [key]: value } };
+    }, { revalidate: false });
   }
 
   function updateItem(index: number, key: keyof EditableItem, value: string | number) {
@@ -125,9 +150,6 @@ export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
     setMessage("");
 
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
       if (!token) throw new Error("Login required.");
 
       const response = await fetch(`/api/orders/${encodeURIComponent(quoteNumber)}`, {
@@ -165,32 +187,32 @@ export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
       if (!response.ok) throw new Error(result.error || "Unable to save order.");
       setMessage(result.warning || result.message || "Order saved.");
       if (result.invoice?.version) {
-        setData((current) =>
-          current
-            ? {
-                ...current,
-                quote: {
-                  ...current.quote,
-                  subtotal,
-                  discount_amount: discountAmount,
-                  total: grandTotal,
-                  invoice_version: result.invoice.version,
-                  latest_invoice_number: result.invoice.invoiceNumber || current.quote.latest_invoice_number
-                },
-                latestInvoice: {
-                  invoice_number:
-                    result.invoice.invoiceNumber ||
-                    current.latestInvoice?.invoice_number ||
-                    current.quote.latest_invoice_number ||
-                    "Latest invoice",
-                  version: result.invoice.version,
-                  pdf_url: result.invoice.pdfUrl || current.latestInvoice?.pdf_url || null,
-                  emailed_at: new Date().toISOString()
-                }
-              }
-            : current
-        );
+        void mutate((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            quote: {
+              ...current.quote,
+              subtotal,
+              discount_amount: discountAmount,
+              total: grandTotal,
+              invoice_version: result.invoice.version,
+              latest_invoice_number: result.invoice.invoiceNumber || current.quote.latest_invoice_number
+            },
+            latestInvoice: {
+              invoice_number:
+                result.invoice.invoiceNumber ||
+                current.latestInvoice?.invoice_number ||
+                current.quote.latest_invoice_number ||
+                "Latest invoice",
+              version: result.invoice.version,
+              pdf_url: result.invoice.pdfUrl || current.latestInvoice?.pdf_url || null,
+              emailed_at: new Date().toISOString()
+            }
+          };
+        }, { revalidate: false });
       }
+      await mutate();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to save order.");
     } finally {
@@ -204,9 +226,6 @@ export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
     setMessage("");
 
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
       if (!token) throw new Error("Login required.");
 
       const response = await fetch(`/api/orders/${encodeURIComponent(quoteNumber)}/status`, {
@@ -220,21 +239,21 @@ export default function OrderEditor({ quoteNumber }: { quoteNumber: string }) {
       const result = await readJsonResponse(response);
       if (!response.ok) throw new Error(result.error || "Unable to update order status.");
 
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              quote: {
-                ...current.quote,
-                status: result.status || nextStatus,
-                finalized_at:
-                  (result.status || nextStatus) === "confirmed"
-                    ? current.quote.finalized_at || new Date().toISOString()
-                    : current.quote.finalized_at
-              }
-            }
-          : current
-      );
+      void mutate((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          quote: {
+            ...current.quote,
+            status: result.status || nextStatus,
+            finalized_at:
+              (result.status || nextStatus) === "confirmed"
+                ? current.quote.finalized_at || new Date().toISOString()
+                : current.quote.finalized_at
+          }
+        };
+      }, { revalidate: false });
+      await mutate();
       setMessage(result.warning || `Order moved to ${stageLabels[result.status as OrderStage] || stageLabels[nextStatus]}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update order status.");

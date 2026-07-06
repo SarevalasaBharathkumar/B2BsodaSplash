@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { stageLabels } from "@/lib/config";
 import { formatINR } from "@/lib/flavours";
 import { createSupabaseBrowserClient } from "@/lib/supabase";
+import Image from "next/image";
 
 type StaffRole = "admin" | "bd";
 
@@ -58,14 +60,8 @@ type DashboardData = {
 
 type DashboardSection = "dashboard" | "orders" | "team" | "products" | "flavours";
 
-async function getAccessToken() {
-  const supabase = createSupabaseBrowserClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  return sessionData.session?.access_token;
-}
-
 export default function StaffDashboard({ requiredRole }: { requiredRole: StaffRole }) {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [message, setMessage] = useState("Loading staff workspace...");
   const [saving, setSaving] = useState("");
   const [activeSection, setActiveSection] = useState<DashboardSection>(() => {
@@ -78,36 +74,57 @@ export default function StaffDashboard({ requiredRole }: { requiredRole: StaffRo
   const [productForm, setProductForm] = useState({ name: "", description: "", imageUrl: "", displayOrder: 0 });
   const [flavourForm, setFlavourForm] = useState({ productId: "", name: "", note: "", pricePerCase: 0, color: "#2e6fb8", displayOrder: 0 });
 
-  async function load() {
-    try {
-      const token = await getAccessToken();
+  useEffect(() => {
+    async function bootstrap() {
+      const supabase = createSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
 
-      if (!token) {
+      if (!accessToken) {
         window.location.href = "/login";
         return;
       }
 
+      setToken(accessToken);
+    }
+
+    bootstrap();
+  }, [requiredRole]);
+
+  const dashboardKey = token ? (["staff-dashboard", token, requiredRole] as const) : null;
+  const { data, error, mutate, isLoading } = useSWR(
+    dashboardKey,
+    async ([, authToken]) => {
       const response = await fetch("/api/staff/dashboard", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       const result = await response.json();
 
-      if (!response.ok) throw new Error(result.error || "Unable to load dashboard.");
-      if (result.profile.role !== requiredRole) {
-        window.location.href = result.profile.role === "admin" ? "/admin" : "/bd";
-        return;
+      if (!response.ok) {
+        throw new Error(result.error || "Unable to load dashboard.");
       }
 
-      setData(result);
-      setMessage("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load dashboard.");
+      return result as DashboardData;
+    },
+    {
+      dedupingInterval: 30000,
+      revalidateOnFocus: true,
+      shouldRetryOnError: false
     }
-  }
+  );
 
   useEffect(() => {
-    load();
-  }, [requiredRole]);
+    if (error) {
+      setMessage(error.message);
+    } else if (data) {
+      setMessage("");
+    }
+  }, [data, error]);
+
+  useEffect(() => {
+    if (!data || data.profile.role === requiredRole) return;
+    window.location.href = data.profile.role === "admin" ? "/admin" : "/bd";
+  }, [data, requiredRole]);
 
   useEffect(() => {
     window.sessionStorage.setItem(`dashboardSection:${requiredRole}`, activeSection);
@@ -126,7 +143,6 @@ export default function StaffDashboard({ requiredRole }: { requiredRole: StaffRo
   }
 
   async function adminRequest(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown) {
-    const token = await getAccessToken();
     if (!token) throw new Error("Login required.");
 
     const response = await fetch(path, {
@@ -139,7 +155,7 @@ export default function StaffDashboard({ requiredRole }: { requiredRole: StaffRo
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Request failed.");
-    await load();
+    await mutate();
     return result;
   }
 
@@ -287,7 +303,14 @@ export default function StaffDashboard({ requiredRole }: { requiredRole: StaffRo
   return (
     <main className="dashboard-page">
       <aside className="dashboard-sidebar">
-        <a href="/"><img src="/assets/logo.png" alt="SodaSplash" /></a>
+        <a href="/">
+          <Image
+            src="/assets/logo.png"
+            alt="SodaSplash logo"
+            width={72}
+            height={72}
+          />
+        </a>
         <span>{isAdmin ? "ADMIN" : "BUSINESS DEVELOPMENT"}</span>
         <nav>
           {navItems.map((item) => (

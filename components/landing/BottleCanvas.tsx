@@ -38,7 +38,7 @@ function Pedestal({ position = [0, -1.04, 0] }: PedestalProps) {
     <group position={position}>
       {/* 1. Main Metallic 3D Cylinder Plate — scaled up */}
       <mesh castShadow receiveShadow position={[0, -0.06, 0]}>
-        <cylinderGeometry args={[1.7, 1.76, 0.15, 64]} />
+        <cylinderGeometry args={[1.36, 1.41, 0.15, 64]} />
         <meshPhysicalMaterial
           color="#061824"
           roughness={0.12}
@@ -51,19 +51,19 @@ function Pedestal({ position = [0, -1.04, 0] }: PedestalProps) {
 
       {/* 2. Embedded Glowing Neon Rim Ring — scaled up */}
       <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[1.66, 1.66, 0.025, 64]} />
+        <cylinderGeometry args={[1.33, 1.33, 0.025, 64]} />
         <meshBasicMaterial color="#00e5ff" />
       </mesh>
 
       {/* 3. Outer Neon Glow Aura on the floor — scaled up */}
       <mesh ref={outerGlowRef} position={[0, -0.14, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.4, 64]} />
+        <circleGeometry args={[1.9, 64]} />
         <meshBasicMaterial color="#148096" opacity={0.3} {...additive} />
       </mesh>
 
       {/* 4. Hot Core Glow directly under the plate — scaled up */}
       <mesh position={[0, -0.13, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.5, 64]} />
+        <circleGeometry args={[1.2, 64]} />
         <meshBasicMaterial color="#00e5ff" opacity={0.45} {...additive} />
       </mesh>
     </group>

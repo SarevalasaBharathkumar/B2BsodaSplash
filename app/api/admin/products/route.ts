@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createSupabaseAdminClient, hasSupabaseAdminEnv } from "@/lib/supabase";
 import { getStaffFromRequest } from "@/lib/staff-auth";
 
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidateTag("public-catalog");
+
   return NextResponse.json({ product: data });
 }
 
@@ -91,6 +94,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidateTag("public-catalog");
+
   return NextResponse.json({ product: data });
 }
 
@@ -115,6 +120,8 @@ export async function DELETE(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  revalidateTag("public-catalog");
 
   return NextResponse.json({ ok: true });
 }

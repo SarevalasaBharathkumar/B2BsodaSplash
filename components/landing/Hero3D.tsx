@@ -1,4 +1,6 @@
 import dynamic from "next/dynamic";
+import HeroFallback from "./HeroFallback";
+import Image from "next/image";
 
 // Load the Three.js canvas only on the client — never SSR
 const BottleCanvas = dynamic(() => import("./BottleCanvas"), {
@@ -12,7 +14,13 @@ export default function Hero3D() {
       {/* Nav sits on top */}
       <nav suppressHydrationWarning>
         <a className="nav-logo" href="#top">
-          <img src="/assets/logo.png" alt="SodaSplash" />
+          <Image
+            src="/assets/logo.png"
+            alt="SodaSplash logo"
+            width={72}
+            height={72}
+            priority
+          />
         </a>
         <div className="nav-links">
           <a href="#flavours">Flavours</a>
@@ -27,7 +35,7 @@ export default function Hero3D() {
         <div className="hero-copy">
           <div className="eyebrow"><i /> WHOLESALE GOLI SODA <i /></div>
           <h1>
-            <span className="hero-title-desktop">Refreshment,<br />made for business.</span>
+            <span className="hero-title-desktop">Refreshment, made<br />for business.</span>
             <span className="hero-title-mobile">Refreshment, made<br />for business.</span>
           </h1>
           <p>
@@ -45,8 +53,11 @@ export default function Hero3D() {
         </div>
 
         {/* 3D bottle viewport centered on the right side */}
-        <div className="hero-visual">
-          <BottleCanvas />
+        <div className="hero-visual hero-visual-shell">
+          <HeroFallback />
+          <div className="hero-visual-canvas">
+            <BottleCanvas />
+          </div>
         </div>
       </div>
     </section>

@@ -26,7 +26,10 @@ export default function Hero3D() {
       <div className="hero-grid">
         <div className="hero-copy">
           <div className="eyebrow"><i /> WHOLESALE GOLI SODA <i /></div>
-          <h1>Refreshment,<br />made for business.</h1>
+          <h1>
+            <span className="hero-title-desktop">Refreshment,<br />made for business.</span>
+            <span className="hero-title-mobile">Refreshment, made<br />for business.</span>
+          </h1>
           <p>
             Flavoured goli soda supplied by the case for hotels, restaurants,
             retailers, offices, cinemas, and events.
@@ -38,7 +41,6 @@ export default function Hero3D() {
           <div className="hero-trust">
             <span><i className="trust-dot" />Case pricing</span>
             <span><i className="trust-dot" />No online payment</span>
-            <span><i className="trust-dot" />Pan-India supply</span>
           </div>
         </div>
 

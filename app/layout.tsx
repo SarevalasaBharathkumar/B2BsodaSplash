@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, League_Spartan } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -134,6 +135,20 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${dmSans.variable} ${leagueSpartan.variable}`} suppressHydrationWarning>
+        {/* Google Analytics (GTags) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-L2Y9XTR0JF"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-L2Y9XTR0JF');
+          `}
+        </Script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

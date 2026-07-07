@@ -23,9 +23,9 @@ export default function Hero3D() {
           />
         </a>
         <div className="nav-links">
-          <a href="#flavours">Flavours</a>
-          <a href="#customers">For Business</a>
-          <a href="#process">How it works</a>
+          <a href="/#customers">For Business</a>
+          <a href="/#process">How it works</a>
+          <a href="/about">About Us</a>
         </div>
         <a className="track-link" href="/track">Track Order</a>
       </nav>
